@@ -60,7 +60,7 @@ public class IncomingCallService extends Service {
 
           if (state.equals(TelephonyManager.EXTRA_STATE_RINGING)) {
             
-            //handleIncomingCall(context); 
+            handleIncomingCall(context); 
 
           } else if (state.equals(TelephonyManager.EXTRA_STATE_OFFHOOK)) {
 
