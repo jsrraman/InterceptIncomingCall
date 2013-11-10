@@ -13,74 +13,82 @@ import android.telephony.TelephonyManager;
 import android.util.Log;
 
 public class IncomingCallService extends Service {
-    private final IBinder mBinder = new LocalBinder();
-    private BroadcastReceiver telephonyBroadcastReceiver;
-    private Bundle extras;
+  private final IBinder mBinder = new LocalBinder();
+  private BroadcastReceiver telephonyBroadcastReceiver;
+  private Bundle extras;
 
-    @Override
-    public void onCreate() {
-	setupTelephonyManagerBroadcastReceiver();
+  @Override
+  public void onCreate() {
+    setupTelephonyManagerBroadcastReceiver();
+  }
+
+  @Override
+  public void onDestroy() {
+    unregisterReceiver(telephonyBroadcastReceiver);
+  }
+
+  @Override
+  public int onStartCommand(Intent intent, int flags, int startId) {
+    Log.d(Constants.TAG, "Incoming call service started");
+
+    return Service.START_STICKY; // Revisit this flag later
+  }
+
+  @Override
+  public IBinder onBind(Intent arg0) {
+    return mBinder;
+  }
+
+  public class LocalBinder extends Binder {
+    IncomingCallService getService() {
+      return IncomingCallService.this;
     }
+  }
 
-    @Override
-    public void onDestroy() {
-	unregisterReceiver(telephonyBroadcastReceiver);
-    }
+  private void setupTelephonyManagerBroadcastReceiver() {
+    telephonyBroadcastReceiver = new BroadcastReceiver() {
+      @Override
+      public void onReceive(final Context context, Intent intent) {
 
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-	Log.d(GlobalConstants.TAG, "Incoming call service started");
+        Log.d(Constants.TAG, "Inside Telephony Manager broadcast onReceive");
 
-	return Service.START_STICKY; // Revisit this flag later
-    }
+        extras = intent.getExtras();
 
-    @Override
-    public IBinder onBind(Intent arg0) {
-	return mBinder;
-    }
+        if (extras != null) {
 
-    public class LocalBinder extends Binder {
-	IncomingCallService getService() {
-	    return IncomingCallService.this;
-	}
-    }
+          String state = extras.getString(TelephonyManager.EXTRA_STATE);
 
-    private void setupTelephonyManagerBroadcastReceiver() {
-	telephonyBroadcastReceiver = new BroadcastReceiver() {
-	    @Override
-	    public void onReceive(final Context context, Intent intent) {
+          if (state.equals(TelephonyManager.EXTRA_STATE_RINGING)) {
+            
+            //handleIncomingCall(context); 
 
-		Log.d(GlobalConstants.TAG, "Inside Telephony Manager broadcast onReceive");
+          } else if (state.equals(TelephonyManager.EXTRA_STATE_OFFHOOK)) {
 
-		extras = intent.getExtras();
+          }
+        }
+      }
+    };
 
-		if (extras != null) {
+    IntentFilter filter = new IntentFilter();
+    filter.addAction(android.telephony.TelephonyManager.ACTION_PHONE_STATE_CHANGED);
 
-		    String state = extras.getString(TelephonyManager.EXTRA_STATE);
+    registerReceiver(telephonyBroadcastReceiver, filter);
+  }
+  
+  void handleIncomingCall(final Context context) {
+    
+    new Handler().postDelayed(new Runnable() {
+      
+      public void run() {
+        Intent intentPhoneCall = new Intent("android.intent.action.ANSWER");
 
-		    if (state.equals(TelephonyManager.EXTRA_STATE_RINGING)) {
-			new Handler().postDelayed(new Runnable() {
-			    public void run() {
-				Intent intentPhoneCall = new Intent("android.intent.action.ANSWER");
+        String incoming_number = extras.getString(TelephonyManager.EXTRA_INCOMING_NUMBER);
+        intentPhoneCall.putExtra("INCOMING_NUMBER", incoming_number);
 
-				String incoming_number = extras
-					.getString(TelephonyManager.EXTRA_INCOMING_NUMBER);
-				intentPhoneCall.putExtra("INCOMING_NUMBER", incoming_number);
+        intentPhoneCall.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        context.startActivity(intentPhoneCall);
+      }
+    }, 2000);
 
-				intentPhoneCall.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-				context.startActivity(intentPhoneCall);
-			    }
-			}, 2000);
-		    } else if (state.equals(TelephonyManager.EXTRA_STATE_OFFHOOK)) {
-
-		    }
-		}
-	    }
-	};
-
-	IntentFilter filter = new IntentFilter();
-	filter.addAction(android.telephony.TelephonyManager.ACTION_PHONE_STATE_CHANGED);
-
-	registerReceiver(telephonyBroadcastReceiver, filter);
-    }
+  }
 }
